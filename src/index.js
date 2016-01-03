@@ -35,20 +35,41 @@ function model(action$) {
 
 function getInitialState(width, height, count) {
   const mines = _.take(_.shuffle(allCoords(width, height)), count);
+  const hasMine = (x, y) => !! _.find(mines, [x, y]);
+
+  const squares = _.zipObject(
+    allCoords(width, height).map(([x, y]) => [key(x, y), {
+      x, y,
+      uncover: false,
+      mine: hasMine(x, y),
+      count: getNeighbours(x, y)
+        .map(([x, y]) => hasMine(x, y))
+        .reduce((sum, i) => i ? sum + 1 : sum, 0),
+    }])
+  );
+
   return {
     width,
     height,
-    squares: _.zipObject(
-      allCoords(width, height).map(([x, y]) => [key(x, y), {
-        x, y,
-        mine: _.find(mines, [x, y]),
-      }])
-    ),
+    squares,
   };
 }
 
 function allCoords(width, height) {
   return _.flatten(_.times(width, (i) => _.times(height, (j) => [i, j])));
+}
+
+function getNeighbours(x, y) {
+  return [
+    [x - 1, y - 1],
+    [x - 1, y],
+    [x - 1, y + 1],
+    [x, y - 1],
+    [x, y + 1],
+    [x + 1, y - 1],
+    [x + 1, y],
+    [x + 1, y + 1],
+  ];
 }
 
 function key(x, y) {
@@ -96,7 +117,7 @@ function renderGrid({ width, height, children }) {
 const SQUARE_WIDTH = 32;
 const SQUARE_HEIGHT = 32;
 
-function renderSquare({ x, y, mine, uncover }) {
+function renderSquare({ x, y, mine, count, uncover }) {
   return div('.square', {
     key: key(x, y),
     dataset: {
@@ -113,5 +134,5 @@ function renderSquare({ x, y, mine, uncover }) {
       textAlign: 'center',
       lineHeight: SQUARE_HEIGHT + 'px',
     },
-  }, uncover && mine ? '✹' : '');
+  }, uncover ? (mine ? '✹' : (count > 0 ? count : '')) : '');
 }
