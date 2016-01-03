@@ -23,17 +23,19 @@ function model(action$) {
   // const width = 30, height = 16, count = 99; // expert
 
   return action$.
-    startWith(getInitialState(width, height)).
+    startWith(getInitialState(width, height, count)).
     do(x => console.log(x));
 }
 
-function getInitialState(width, height) {
+function getInitialState(width, height, count) {
+  const mines = _.take(_.shuffle(allCoords(width, height)), count);
   return {
     width,
     height,
     squares: _.zipObject(
       allCoords(width, height).map(([x, y]) => [`${x}-${y}`, {
         x, y,
+        mine: _.find(mines, [x, y]),
       }])
     ),
   };
@@ -75,6 +77,8 @@ function renderSquare(square) {
       top: square.y * SQUARE_HEIGHT + 'px',
       background: '#eee',
       border: 'solid 1px #ccc',
+      textAlign: 'center',
+      lineHeight: SQUARE_HEIGHT + 'px',
     },
-  });
+  }, square.mine ? '✹' : '');
 }
