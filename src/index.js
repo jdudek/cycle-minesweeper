@@ -15,7 +15,11 @@ function main({ DOM }) {
 function intent(DOM) {
   return DOM.select('.square')
     .events('click')
-    .map((e) => e.target.dataset);
+    .map((e) => e.target.dataset)
+    .map(({ x, y }) => ({
+      x: parseInt(x, 10),
+      y: parseInt(y, 10),
+    }));
 }
 
 // model
@@ -35,15 +39,15 @@ function model(action$) {
 
 function getInitialState(width, height, count) {
   const mines = _.take(_.shuffle(allCoords(width, height)), count);
-  const hasMine = (x, y) => !! _.find(mines, [x, y]);
+  const hasMine = ({ x, y }) => !! _.find(mines, { x, y });
 
   const squares = _.zipObject(
-    allCoords(width, height).map(([x, y]) => [key(x, y), {
+    allCoords(width, height).map(({ x, y }) => [key(x, y), {
       x, y,
       uncover: false,
-      mine: hasMine(x, y),
-      count: getNeighbours(x, y)
-        .map(([x, y]) => hasMine(x, y))
+      mine: hasMine({ x, y }),
+      count: hasMine({ x, y }) ? undefined : getNeighbourCoords({ x, y })
+        .map(hasMine)
         .reduce((sum, i) => i ? sum + 1 : sum, 0),
     }])
   );
@@ -56,20 +60,27 @@ function getInitialState(width, height, count) {
 }
 
 function allCoords(width, height) {
-  return _.flatten(_.times(width, (i) => _.times(height, (j) => [i, j])));
+  return _.flatten(_.times(width, (i) => _.times(height, (j) => [i, j])))
+    .map(([x, y]) => ({ x, y }));
 }
 
-function getNeighbours(x, y) {
+function getNeighbourCoords({ x, y }) {
   return [
-    [x - 1, y - 1],
-    [x - 1, y],
-    [x - 1, y + 1],
-    [x, y - 1],
-    [x, y + 1],
-    [x + 1, y - 1],
-    [x + 1, y],
-    [x + 1, y + 1],
+    { x: x - 1, y: y - 1 },
+    { x: x - 1, y: y },
+    { x: x - 1, y: y + 1 },
+    { x: x,     y: y - 1 },
+    { x: x,     y: y + 1 },
+    { x: x + 1, y: y - 1 },
+    { x: x + 1, y: y },
+    { x: x + 1, y: y + 1 },
   ];
+}
+
+function getNeighbours(squares, { x, y }) {
+  return getNeighbourCoords({ x, y })
+    .map(({ x, y }) => squares[key(x, y)])
+    .filter((square) => square);
 }
 
 function key(x, y) {
@@ -77,16 +88,30 @@ function key(x, y) {
 }
 
 function applyClick(state, { x, y }) {
+  const uncovered = _.zipObject(getPositionsToUncover(state.squares, [{ x, y }])
+    .map(({ x, y }) => state.squares[key(x, y)])
+    .map((square) => ({ ...square, uncover: true }))
+    .map((square) => [key(square.x, square.y), square]));
+
   return {
     ...state,
-    squares: {
-      ...state.squares,
-      [key(x, y)]: {
-        ...state.squares[key(x, y)],
-        uncover: true,
-      },
-    },
+    squares: _.extend({}, state.squares, uncovered),
   };
+}
+
+function getPositionsToUncover(squares, positions) {
+  let visited = [];
+  while (positions.length > 0) {
+    let position = positions.shift();
+    let square = squares[key(position.x, position.y)];
+    if (_.find(visited, { x: position.x, y: position.y })) continue;
+    if (square.count === 0) {
+      let neighbours = getNeighbours(squares, position);
+      positions = positions.concat(neighbours);
+    }
+    visited.push(position);
+  }
+  return visited;
 }
 
 // view
