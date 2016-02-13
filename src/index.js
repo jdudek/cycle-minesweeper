@@ -178,6 +178,12 @@ function isGameWon(state): boolean {
   );
 }
 
+function countRemainingMarks(state): number {
+  const mines = values(state.squares).filter((s) => s.mine).length;
+  const marks = values(state.squares).filter((s) => s.mark).length;
+  return mines - marks;
+}
+
 function getPositionsToUncover(squares, positions): Array<Coords> {
   let visited = [];
   while (positions.length > 0) {
@@ -200,6 +206,7 @@ function view(state$) {
   return state$.map((state) =>
     div([
       'Minesweeper',
+      ` – ${countRemainingMarks(state)}`,
       isGameOver(state) ? ' — Game over' : '',
       isGameWon(state) ? ' — You won!' : '',
 
