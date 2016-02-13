@@ -1,6 +1,8 @@
 import Cycle from '@cycle/core';
 import { makeDOMDriver, div } from '@cycle/dom';
-import _ from 'lodash';
+import {
+  extend, find, flatten, fromPairs, map, shuffle, sortBy, take, times, values
+} from 'lodash';
 
 Cycle.run(main, { DOM: makeDOMDriver('#app') });
 
@@ -38,10 +40,10 @@ function model(action$) {
 }
 
 function getInitialState(width, height, count) {
-  const mines = _.take(_.shuffle(allCoords(width, height)), count);
-  const hasMine = ({ x, y }) => !! _.find(mines, { x, y });
+  const mines = take(shuffle(allCoords(width, height)), count);
+  const hasMine = ({ x, y }) => !! find(mines, { x, y });
 
-  const squares = _.fromPairs(
+  const squares = fromPairs(
     allCoords(width, height).map(({ x, y }) => [key(x, y), {
       x, y,
       uncover: false,
@@ -60,7 +62,7 @@ function getInitialState(width, height, count) {
 }
 
 function allCoords(width, height) {
-  return _.flatten(_.times(width, (i) => _.times(height, (j) => [i, j])))
+  return flatten(times(width, (i) => times(height, (j) => [i, j])))
     .map(([x, y]) => ({ x, y }));
 }
 
@@ -88,14 +90,14 @@ function key(x, y) {
 }
 
 function applyClick(state, { x, y }) {
-  const uncovered = _.fromPairs(getPositionsToUncover(state.squares, [{ x, y }])
+  const uncovered = fromPairs(getPositionsToUncover(state.squares, [{ x, y }])
     .map(({ x, y }) => state.squares[key(x, y)])
     .map((square) => ({ ...square, uncover: true }))
     .map((square) => [key(square.x, square.y), square]));
 
   return {
     ...state,
-    squares: _.extend({}, state.squares, uncovered),
+    squares: extend({}, state.squares, uncovered),
   };
 }
 
@@ -104,7 +106,7 @@ function getPositionsToUncover(squares, positions) {
   while (positions.length > 0) {
     let position = positions.shift();
     let square = squares[key(position.x, position.y)];
-    if (_.find(visited, { x: position.x, y: position.y })) continue;
+    if (find(visited, { x: position.x, y: position.y })) continue;
     if (square.count === 0) {
       let neighbours = getNeighbours(squares, position);
       positions = positions.concat(neighbours);
@@ -120,8 +122,8 @@ function view(state$) {
   return state$.map(({ width, height, squares }) =>
     renderGrid({
       width, height,
-      children: _.map(
-        _.sortBy(_.values(squares), ({ x, y }) => [x, y]),
+      children: map(
+        sortBy(values(squares), ({ x, y }) => [x, y]),
         renderSquare
       ),
     })
