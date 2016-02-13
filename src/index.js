@@ -3,7 +3,7 @@
 import Cycle from '@cycle/core';
 import { makeDOMDriver, div } from '@cycle/dom';
 import type { DOM } from '@cycle/dom';
-import type { Observable } from 'rx';
+import { Observable } from 'rx';
 import {
   extend, find, flatten, fromPairs, map, shuffle, sortBy, take, times, values
 } from 'lodash';
@@ -18,27 +18,48 @@ function main({ DOM }) {
 
 // intent
 
-type Action = {
+type Coords = {
   x: number,
   y: number,
 };
 
+type Action = ({ uncover: Coords }) | ({ mark: Coords });
+
 function intent(DOM: DOM): Observable<Action> {
-  return DOM.select('.square')
-    .events('click')
-    .map((e) => e.target.dataset)
-    .map(({ x, y }) => ({
+  function eventToCoords(e) {
+    let { x, y } = e.target.dataset;
+    return {
       x: parseInt(x, 10),
       y: parseInt(y, 10),
-    }));
+    };
+  }
+
+  const click$ = DOM.select('.square').events('mousedown')
+  click$.do((e) => e.preventDefault());
+  const lftClick$ = click$.filter((e) => e.button === 0);
+  const rgtClick$ = click$.filter((e) => e.button === 2);
+
+  const uncover$ = lftClick$.map(eventToCoords).map((v) => ({ uncover: v }));
+  const mark$    = rgtClick$.map(eventToCoords).map((v) => ({ mark: v }));
+
+  return Observable.merge(uncover$, mark$);
 }
 
 // model
 
+type Square = {
+  x: number,
+  y: number,
+  uncover: boolean,
+  mark: boolean,
+  mine: boolean,
+  count: number,
+};
+
 type State = {
   width: number,
   height: number,
-  squares: Object,
+  squares: { [key: string]: Square },
 };
 
 function model(action$: Observable<Action>): Observable<State> {
@@ -50,7 +71,7 @@ function model(action$: Observable<Action>): Observable<State> {
 
   return action$
     .startWith(initialState)
-    .scan((state, click) => applyClick(state, click));
+    .scan((state, action) => applyAction(state, action));
 }
 
 function getInitialState(width: number, height: number, count: number): State {
@@ -61,6 +82,7 @@ function getInitialState(width: number, height: number, count: number): State {
     allCoords(width, height).map(({ x, y }) => [key(x, y), {
       x, y,
       uncover: false,
+      mark: false,
       mine: hasMine({ x, y }),
       count: hasMine({ x, y }) ? undefined : getNeighbourCoords({ x, y })
         .map(hasMine)
@@ -103,7 +125,20 @@ function key(x, y): string {
   return `${x}-${y}`;
 }
 
-function applyClick(state, { x, y }) {
+function applyAction(state: State, action: Action): State {
+  if (action.uncover) {
+    return applyUncover(state, action.uncover);
+  } else if (action.mark) {
+    return applyMark(state, action.mark);
+  } else {
+    return state;
+  }
+}
+
+function applyUncover(state, { x, y }) {
+  const square = state.squares[key(x, y)];
+  if (square.mark) return state;
+
   const uncovered = fromPairs(getPositionsToUncover(state.squares, [{ x, y }])
     .map(({ x, y }) => state.squares[key(x, y)])
     .map((square) => ({ ...square, uncover: true }))
@@ -115,7 +150,21 @@ function applyClick(state, { x, y }) {
   };
 }
 
-function getPositionsToUncover(squares, positions) {
+function applyMark(state, { x, y }) {
+  const square = state.squares[key(x, y)];
+  if (square.uncover) return state;
+
+  return {
+    ...state,
+    squares: extend(
+      {},
+      state.squares,
+      { [key(square.x, square.y)]: { ...square, mark: !square.mark } }
+    ),
+  };
+}
+
+function getPositionsToUncover(squares, positions): Array<Coords> {
   let visited = [];
   while (positions.length > 0) {
     let position = positions.shift();
@@ -158,7 +207,11 @@ function renderGrid({ width, height, children }) {
 const SQUARE_WIDTH = 32;
 const SQUARE_HEIGHT = 32;
 
-function renderSquare({ x, y, mine, count, uncover }) {
+function renderSquare({ x, y, mine, count, uncover, mark }) {
+  const icon = uncover
+    ? (mine ? '✹' : (count > 0 ? count : ''))
+    : (mark ? '√' : '');
+
   return div('.square', {
     key: key(x, y),
     dataset: {
@@ -175,5 +228,5 @@ function renderSquare({ x, y, mine, count, uncover }) {
       textAlign: 'center',
       lineHeight: SQUARE_HEIGHT + 'px',
     },
-  }, uncover ? (mine ? '✹' : (count > 0 ? count : '')) : '');
+  }, icon);
 }
