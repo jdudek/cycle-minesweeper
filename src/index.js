@@ -41,7 +41,7 @@ function getInitialState(width, height, count) {
   const mines = _.take(_.shuffle(allCoords(width, height)), count);
   const hasMine = ({ x, y }) => !! _.find(mines, { x, y });
 
-  const squares = _.zipObject(
+  const squares = _.fromPairs(
     allCoords(width, height).map(({ x, y }) => [key(x, y), {
       x, y,
       uncover: false,
@@ -88,7 +88,7 @@ function key(x, y) {
 }
 
 function applyClick(state, { x, y }) {
-  const uncovered = _.zipObject(getPositionsToUncover(state.squares, [{ x, y }])
+  const uncovered = _.fromPairs(getPositionsToUncover(state.squares, [{ x, y }])
     .map(({ x, y }) => state.squares[key(x, y)])
     .map((square) => ({ ...square, uncover: true }))
     .map((square) => [key(square.x, square.y), square]));
