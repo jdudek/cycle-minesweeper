@@ -172,6 +172,12 @@ function isGameOver(state): boolean {
   return values(state.squares).some((square) => square.mine && square.uncover);
 }
 
+function isGameWon(state): boolean {
+  return values(state.squares).every((square) =>
+    (square.uncover && !square.mine) || (square.mark && square.mine)
+  );
+}
+
 function getPositionsToUncover(squares, positions): Array<Coords> {
   let visited = [];
   while (positions.length > 0) {
@@ -194,6 +200,7 @@ function view(state$) {
     div([
       'Minesweeper',
       isGameOver(state) ? ' — Game over' : '',
+      isGameWon(state) ? ' — You won!' : '',
 
       renderGrid({
         width: state.width,
