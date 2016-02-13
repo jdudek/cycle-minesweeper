@@ -183,6 +183,7 @@ function getPositionsToUncover(squares, positions): Array<Coords> {
   while (positions.length > 0) {
     let position = positions.shift();
     let square = squares[key(position.x, position.y)];
+    if (square.mark) continue;
     if (find(visited, { x: position.x, y: position.y })) continue;
     if (square.count === 0) {
       let neighbours = getNeighbours(squares, position);
