@@ -2,6 +2,8 @@
 
 import Cycle from '@cycle/core';
 import { makeDOMDriver, div } from '@cycle/dom';
+import type { DOM } from '@cycle/dom';
+import type { Observable } from 'rx';
 import {
   extend, find, flatten, fromPairs, map, shuffle, sortBy, take, times, values
 } from 'lodash';
@@ -16,7 +18,12 @@ function main({ DOM }) {
 
 // intent
 
-function intent(DOM) {
+type Action = {
+  x: number,
+  y: number,
+};
+
+function intent(DOM: DOM): Observable<Action> {
   return DOM.select('.square')
     .events('click')
     .map((e) => e.target.dataset)
@@ -28,7 +35,13 @@ function intent(DOM) {
 
 // model
 
-function model(action$) {
+type State = {
+  width: number,
+  height: number,
+  squares: Object,
+};
+
+function model(action$: Observable<Action>): Observable<State> {
   const width = 8, height = 8, count = 10; // beginner
   // const width = 16, height = 16, count = 40; // intermediate
   // const width = 30, height = 16, count = 99; // expert
@@ -37,11 +50,10 @@ function model(action$) {
 
   return action$
     .startWith(initialState)
-    .scan((state, click) => applyClick(state, click))
-    .do(x => console.log(x));
+    .scan((state, click) => applyClick(state, click));
 }
 
-function getInitialState(width, height, count) {
+function getInitialState(width: number, height: number, count: number): State {
   const mines = take(shuffle(allCoords(width, height)), count);
   const hasMine = ({ x, y }) => !! find(mines, { x, y });
 
@@ -87,7 +99,7 @@ function getNeighbours(squares, { x, y }) {
     .filter((square) => square);
 }
 
-function key(x, y) {
+function key(x, y): string {
   return `${x}-${y}`;
 }
 
