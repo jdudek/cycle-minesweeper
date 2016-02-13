@@ -136,6 +136,8 @@ function applyAction(state: State, action: Action): State {
 }
 
 function applyUncover(state, { x, y }) {
+  if (isGameOver(state)) return state;
+
   const square = state.squares[key(x, y)];
   if (square.mark) return state;
 
@@ -151,6 +153,8 @@ function applyUncover(state, { x, y }) {
 }
 
 function applyMark(state, { x, y }) {
+  if (isGameOver(state)) return state;
+
   const square = state.squares[key(x, y)];
   if (square.uncover) return state;
 
@@ -162,6 +166,10 @@ function applyMark(state, { x, y }) {
       { [key(square.x, square.y)]: { ...square, mark: !square.mark } }
     ),
   };
+}
+
+function isGameOver(state): boolean {
+  return values(state.squares).some((square) => square.mine && square.uncover);
 }
 
 function getPositionsToUncover(squares, positions): Array<Coords> {
@@ -182,14 +190,20 @@ function getPositionsToUncover(squares, positions): Array<Coords> {
 // view
 
 function view(state$) {
-  return state$.map(({ width, height, squares }) =>
-    renderGrid({
-      width, height,
-      children: map(
-        sortBy(values(squares), ({ x, y }) => [x, y]),
-        renderSquare
-      ),
-    })
+  return state$.map((state) =>
+    div([
+      'Minesweeper',
+      isGameOver(state) ? ' — Game over' : '',
+
+      renderGrid({
+        width: state.width,
+        height: state.height,
+        children: map(
+          sortBy(values(state.squares), ({ x, y }) => [x, y]),
+          renderSquare
+        ),
+      }),
+    ])
   );
 }
 
