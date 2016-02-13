@@ -11,8 +11,10 @@ import {
 Cycle.run(main, { DOM: makeDOMDriver('#app') });
 
 function main({ DOM }) {
+  const second$ = Observable.timer(0, 1000);
+
   return {
-    DOM: view(model(intent(DOM))),
+    DOM: view(model(intent({ DOM, second$ }))),
   };
 }
 
@@ -23,9 +25,9 @@ type Coords = {
   y: number,
 };
 
-type Action = ({ uncover: Coords }) | ({ mark: Coords });
+type Action = ({ uncover: Coords }) | ({ mark: Coords }) | ({ tick: boolean });
 
-function intent(DOM: DOM): Observable<Action> {
+function intent({ DOM: DOM, second$ }): Observable<Action> {
   function eventToCoords(e) {
     let { x, y } = e.target.dataset;
     return {
@@ -34,15 +36,16 @@ function intent(DOM: DOM): Observable<Action> {
     };
   }
 
-  const click$ = DOM.select('.square').events('mousedown')
+  const click$ = DOM.select('.square').events('mousedown');
   click$.do((e) => e.preventDefault());
   const lftClick$ = click$.filter((e) => e.button === 0);
   const rgtClick$ = click$.filter((e) => e.button === 2);
 
   const uncover$ = lftClick$.map(eventToCoords).map((v) => ({ uncover: v }));
   const mark$    = rgtClick$.map(eventToCoords).map((v) => ({ mark: v }));
+  const tick$    = second$.map(() => ({ tick: true }));
 
-  return Observable.merge(uncover$, mark$);
+  return Observable.merge(uncover$, mark$, tick$);
 }
 
 // model
@@ -60,6 +63,7 @@ type State = {
   width: number,
   height: number,
   squares: { [key: string]: Square },
+  elapsedSeconds: number,
 };
 
 function model(action$: Observable<Action>): Observable<State> {
@@ -94,6 +98,7 @@ function getInitialState(width: number, height: number, count: number): State {
     width,
     height,
     squares,
+    elapsedSeconds: 0,
   };
 }
 
@@ -130,6 +135,8 @@ function applyAction(state: State, action: Action): State {
     return applyUncover(state, action.uncover);
   } else if (action.mark) {
     return applyMark(state, action.mark);
+  } else if (action.tick) {
+    return applyTick(state);
   } else {
     return state;
   }
@@ -165,6 +172,15 @@ function applyMark(state, { x, y }) {
       state.squares,
       { [key(square.x, square.y)]: { ...square, mark: !square.mark } }
     ),
+  };
+}
+
+function applyTick(state) {
+  if (isGameOver(state) || isGameWon(state)) return state;
+
+  return {
+    ...state,
+    elapsedSeconds: state.elapsedSeconds + 1,
   };
 }
 
@@ -206,6 +222,7 @@ function view(state$) {
   return state$.map((state) =>
     div([
       'Minesweeper',
+      ` – ${state.elapsedSeconds}`,
       ` – ${countRemainingMarks(state)}`,
       isGameOver(state) ? ' — Game over' : '',
       isGameWon(state) ? ' — You won!' : '',

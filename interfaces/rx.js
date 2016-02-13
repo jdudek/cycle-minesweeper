@@ -9,5 +9,7 @@ declare module 'rx' {
     startWith<R>(init: R): Observable<T>;
 
     static merge(...args: Array<Observable>): Observable;
+
+    static timer(dueTime: number, period: number): Observable<mixed>;
   }
 }
