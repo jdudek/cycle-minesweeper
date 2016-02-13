@@ -1,3 +1,5 @@
+/* @flow */
+
 import Cycle from '@cycle/core';
 import { makeDOMDriver, div } from '@cycle/dom';
 import {
