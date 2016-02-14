@@ -100,10 +100,15 @@
 	    };
 	  }
 
-	  var click$ = DOM.select('.square').events('mousedown');
-	  click$.do(function (e) {
+	  var squares = DOM.select('.square');
+	  squares.events('mousedown').subscribe(function (e) {
 	    return e.preventDefault();
 	  });
+	  squares.events('contextmenu').subscribe(function (e) {
+	    return e.preventDefault();
+	  });
+
+	  var click$ = squares.events('mousedown');
 	  var lftClick$ = click$.filter(function (e) {
 	    return e.button === 0;
 	  });
@@ -362,7 +367,10 @@
 	      background: uncover ? '#fff' : '#eee',
 	      border: 'solid 1px #ccc',
 	      textAlign: 'center',
-	      lineHeight: SQUARE_HEIGHT + 'px'
+	      lineHeight: SQUARE_HEIGHT + 'px',
+	      webkitUserSelect: 'none',
+	      mozUserSelect: 'none',
+	      msUserSelect: 'none'
 	    }
 	  }, icon);
 	}
