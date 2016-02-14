@@ -36,8 +36,11 @@ function intent({ DOM: DOM, second$ }): Observable<Action> {
     };
   }
 
-  const click$ = DOM.select('.square').events('mousedown');
-  click$.do((e) => e.preventDefault());
+  const squares = DOM.select('.square');
+  squares.events('mousedown').subscribe(e => e.preventDefault());
+  squares.events('contextmenu').subscribe(e => e.preventDefault());
+
+  const click$ = squares.events('mousedown');
   const lftClick$ = click$.filter((e) => e.button === 0);
   const rgtClick$ = click$.filter((e) => e.button === 2);
 
@@ -273,6 +276,9 @@ function renderSquare({ x, y, mine, count, uncover, mark }) {
       border: 'solid 1px #ccc',
       textAlign: 'center',
       lineHeight: SQUARE_HEIGHT + 'px',
+      webkitUserSelect: 'none',
+      mozUserSelect: 'none',
+      msUserSelect: 'none',
     },
   }, icon);
 }
